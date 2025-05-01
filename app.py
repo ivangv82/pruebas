@@ -13,7 +13,7 @@ BONDS  = ['IEF','LQD','SHY','BIL']
 TICKERS = list(dict.fromkeys(STOCKS + BONDS))
 
 # 2) Función cacheada para descargar un único día
-@st.cache_data
+#@st.cache_data
 def fetch_close_for_date(tickers, date):
     start = date.strftime("%Y-%m-%d")
     end   = (date + timedelta(days=1)).strftime("%Y-%m-%d")
