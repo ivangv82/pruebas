@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import yfinance as yf
+import streamlit as st  # <–– aquí
 
 # ———————— 1. Define aquí tus universos ————————
 STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
