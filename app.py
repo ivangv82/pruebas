@@ -1,53 +1,49 @@
 import time
 import streamlit as st
 import pandas as pd
-import yfinance as yf
+from alpha_vantage.timeseries import TimeSeries
 from datetime import datetime
 
-# ———————————— Streamlit config ————————————
-st.set_page_config(page_title="Cierre al 30-abril-2025", layout="wide")
-st.title("📅 Cierre al 30-abril-2025 — Descarga Uno a Uno")
+# ————— Configuración Streamlit —————
+st.set_page_config(page_title="Cierre 30-abril-2025 (AlphaVantage)", layout="wide")
+st.title("📅 Cierre al 30-abril-2025 con Alpha Vantage")
 
-# ———————————— Universo de tickers ————————————
+# ————— Lee tu API Key desde secrets —————
+API_KEY = "JH2RHP5ZMYIIT21N" #st.secrets["alpha_vantage"]["key"]
+ts = TimeSeries(key=API_KEY, output_format="pandas", indexing_type="date")
+
+# ————— Universo de tickers —————
 STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
 BONDS  = ['IEF','LQD','SHY','BIL']
 TICKERS = list(dict.fromkeys(STOCKS + BONDS))
 
-# ———————————— Fecha objetivo ————————————
-fecha_obj = datetime(2025, 4, 30)
+fecha_obj = datetime(2025, 4, 30).date()
 
-# ———————————— Botón para lanzar la descarga ————————————
-if st.button("▶️ Descargar precios uno a uno"):
+# ————— Botón de descarga —————
+if st.button("▶️ Descargar precios (AlphaVantage)"):
     precios = {}
-    with st.spinner("Descargando precios…"):
+    with st.spinner("Descargando…"):
         for tk in TICKERS:
             try:
-                df = yf.download(
-                    tk,
-                    period="2d",          # trae los últimos 2 días hábiles
-                    interval="1d",
-                    progress=False,
-                    auto_adjust=False,
-                    threads=False         # serializa las peticiones
-                )["Close"]
-                if df.empty:
-                    st.warning(f"No data para {tk}")
+                # Llama al endpoint diario ajustado
+                data, _ = ts.get_daily_adjusted(symbol=tk, outputsize="full")
+                # data.index es DatetimeIndex
+                if fecha_obj in data.index.date:
+                    precios[tk] = data.loc[str(fecha_obj), "4. close"]
                 else:
-                    # extrayendo el dato de fecha_obj si existe
-                    mask = df.index.date == fecha_obj.date()
-                    if mask.any():
-                        precio = df.loc[mask].iloc[0]
+                    # fallback: toma el cierre más reciente antes de fecha_obj
+                    df = data[data.index.date < fecha_obj]
+                    if not df.empty:
+                        precios[tk] = df["4. close"].iloc[0]
                     else:
-                        precio = df.iloc[-1]  # fallback al más reciente
-                    precios[tk] = precio
+                        st.warning(f"No hay datos antes de {fecha_obj} para {tk}")
             except Exception as e:
-                st.warning(f"Error descargando {tk}: {e}")
-            time.sleep(0.5)  # medio segundo de pausa entre calls
+                st.warning(f"Error con {tk}: {e}")
+            time.sleep(1)  # Alpha Vantage limita 5 llamadas/minuto
 
-    # ———————————— Mostrar resultado ————————————
     if precios:
         df_out = pd.Series(precios, name="Close").to_frame().T.round(4)
-        st.success(f"Precios al cierre de {fecha_obj.strftime('%Y-%m-%d')}")
+        st.success(f"✅ Precios al cierre de {fecha_obj}")
         st.dataframe(df_out, use_container_width=True)
     else:
-        st.error("❌ No se obtuvieron precios de cierre.")
+        st.error("❌ No se obtuvieron precios.")
