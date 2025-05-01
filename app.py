@@ -29,7 +29,11 @@ def fetch_close_for_date(tickers, date):
 
 # 3) Llama a la función
 fecha_obj = datetime(2025, 4, 30)
+
 df = fetch_close_for_date(TICKERS, fecha_obj)
+st.write("Shape de df:", df.shape)
+st.write("Índice de df:", df.index)
+st.write("Primeras filas:", df.head())
 
 # 4) Comprueba resultado y muestra
 if df.empty:
