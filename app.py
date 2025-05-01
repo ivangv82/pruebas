@@ -2,46 +2,52 @@ import time
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+from datetime import datetime
 
-# ———————————— Configuración Streamlit ————————————
-st.set_page_config(
-    page_title="Cierre al 30-abril-2025",
-    layout="wide"
-)
+# ———————————— Streamlit config ————————————
+st.set_page_config(page_title="Cierre al 30-abril-2025", layout="wide")
 st.title("📅 Cierre al 30-abril-2025 — Descarga Uno a Uno")
 
-# ———————————— Universos ————————————
+# ———————————— Universo de tickers ————————————
 STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
 BONDS  = ['IEF','LQD','SHY','BIL']
-TICKERS = list(dict.fromkeys(STOCKS + BONDS))  # quita duplicados
+TICKERS = list(dict.fromkeys(STOCKS + BONDS))
 
-# ———————————— Botón de descarga ————————————
+# ———————————— Fecha objetivo ————————————
+fecha_obj = datetime(2025, 4, 30)
+
+# ———————————— Botón para lanzar la descarga ————————————
 if st.button("▶️ Descargar precios uno a uno"):
     precios = {}
-    with st.spinner("Descargando…"):
+    with st.spinner("Descargando precios…"):
         for tk in TICKERS:
             try:
                 df = yf.download(
                     tk,
-                    period="1d",          # <-- sólo pide el último día
+                    period="2d",          # trae los últimos 2 días hábiles
                     interval="1d",
                     progress=False,
                     auto_adjust=False,
-                    threads=False         # <-- fuerza secuencial
+                    threads=False         # serializa las peticiones
                 )["Close"]
-                if not df.empty:
-                    precios[tk] = df.iloc[-1]
-                else:
+                if df.empty:
                     st.warning(f"No data para {tk}")
+                else:
+                    # extrayendo el dato de fecha_obj si existe
+                    mask = df.index.date == fecha_obj.date()
+                    if mask.any():
+                        precio = df.loc[mask].iloc[0]
+                    else:
+                        precio = df.iloc[-1]  # fallback al más reciente
+                    precios[tk] = precio
             except Exception as e:
-                st.warning(f"Error {tk}: {e}")
-            time.sleep(0.5)            # <-- evita rate-limit
+                st.warning(f"Error descargando {tk}: {e}")
+            time.sleep(0.5)  # medio segundo de pausa entre calls
 
-    serie = pd.Series(precios)
-    if serie.empty:
-        st.error("❌ No se obtuvieron precios de cierre.")
-    else:
-        # Muestro en tabla (una fila con todos los cierres)
-        df_out = serie.to_frame("Close").T.round(4)
-        st.success("✅ Precios descargados:")
+    # ———————————— Mostrar resultado ————————————
+    if precios:
+        df_out = pd.Series(precios, name="Close").to_frame().T.round(4)
+        st.success(f"Precios al cierre de {fecha_obj.strftime('%Y-%m-%d')}")
         st.dataframe(df_out, use_container_width=True)
+    else:
+        st.error("❌ No se obtuvieron precios de cierre.")
