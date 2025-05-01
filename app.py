@@ -1,31 +1,27 @@
-from datetime import datetime, timedelta
+import streamlit as st
+from datetime import datetime
 import yfinance as yf
-import streamlit as st  # <–– aquí
 
-# ———————— 1. Define aquí tus universos ————————
+# 1. Definir universos
 STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
 BONDS  = ['IEF','LQD','SHY','BIL']
+tickers = list(dict.fromkeys(STOCKS + BONDS))
 
-# ———————— 2. Ahora sí puedes combinarlos ————————
-tickers = STOCKS + BONDS
-
-# ———————— 3. Fechas y descarga ————————
-last_month_end = datetime(2025, 4, 30)
-start = last_month_end.strftime("%Y-%m-%d")
-end   = (last_month_end + timedelta(days=1)).strftime("%Y-%m-%d")
-
-df = yf.download(
+# 2. Descargar 36 meses de datos diarios
+closes_daily = yf.download(
     tickers,
-    start=start,
-    end=end,
+    period="36mo",
     interval="1d",
     progress=False,
     auto_adjust=False
 )["Close"]
 
-if df.empty:
-    st.error("No se descargaron datos para la fecha solicitada.")
-else:
-    # Toma el primer (y único) registro sin usar .loc
-    precios = df.iloc[0]
-    st.write("Precios al 2025-04-30:", precios.to_dict())
+# 3. Remuestrear a fin de mes y coger la última fila
+closes_eom = closes_daily.resample('M').last()
+
+# 4. Fechas y salida
+fecha_ult = closes_eom.index[-1].strftime("%Y-%m-%d")  # debería ser "2025-04-30"
+precios_ult = closes_eom.iloc[-1]
+
+st.write(f"Precios al cierre de {fecha_ult}")
+st.dataframe(precios_ult.to_frame("Close").T)
