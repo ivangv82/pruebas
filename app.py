@@ -1,27 +1,41 @@
 import streamlit as st
-from datetime import datetime
+import pandas as pd
 import yfinance as yf
+from datetime import datetime, timedelta
 
-# 1. Definir universos
+st.set_page_config(layout="wide")
+st.title("Cierre al 30-abril-2025")
+
+# 1) Define tus universos
 STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
 BONDS  = ['IEF','LQD','SHY','BIL']
-tickers = list(dict.fromkeys(STOCKS + BONDS))
+# Quita duplicados
+TICKERS = list(dict.fromkeys(STOCKS + BONDS))
 
-# 2. Descargar 36 meses de datos diarios
-closes_daily = yf.download(
-    tickers,
-    period="36mo",
-    interval="1d",
-    progress=False,
-    auto_adjust=False
-)["Close"]
+# 2) Función cacheada para descargar un único día
+@st.cache_data
+def fetch_close_for_date(tickers, date):
+    start = date.strftime("%Y-%m-%d")
+    end   = (date + timedelta(days=1)).strftime("%Y-%m-%d")
+    df = yf.download(
+        tickers,
+        start=start,
+        end=end,
+        interval="1d",
+        progress=False,
+        auto_adjust=False
+    )["Close"]
+    return df
 
-# 3. Remuestrear a fin de mes y coger la última fila
-closes_eom = closes_daily.resample('M').last()
+# 3) Llama a la función
+fecha_obj = datetime(2025, 4, 30)
+df = fetch_close_for_date(TICKERS, fecha_obj)
 
-# 4. Fechas y salida
-fecha_ult = closes_eom.index[-1].strftime("%Y-%m-%d")  # debería ser "2025-04-30"
-precios_ult = closes_eom.iloc[-1]
-
-st.write(f"Precios al cierre de {fecha_ult}")
-st.dataframe(precios_ult.to_frame("Close").T)
+# 4) Comprueba resultado y muestra
+if df.empty:
+    st.error("❌ No se descargaron datos para el 2025-04-30.")
+else:
+    # Puede que el índice no se llame exactamente "2025-04-30", así que cogemos la fila 0
+    precios = df.iloc[0].round(4)
+    st.write(f"📅 Cierre al {fecha_obj.strftime('%Y-%m-%d')}")
+    st.dataframe(precios.to_frame("Close").T)
