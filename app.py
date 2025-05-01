@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 import yfinance as yf
 
+STOCKS     = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
+BONDS      = ['IEF','LQD','SHY','BIL']
+
 # Fecha del último día de mes a extraer
 last_month_end = datetime(2025, 4, 30)  # o calcula dinámicamente
 start = last_month_end.strftime("%Y-%m-%d")
