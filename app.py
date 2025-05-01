@@ -1,13 +1,18 @@
 from datetime import datetime, timedelta
 import yfinance as yf
 
-# Parámetros
+# ———————— 1. Define aquí tus universos ————————
+STOCKS = ['GLD','SPY','QQQ','IYR','VGK','GSG','HYG','EEM','TLT','IWM','EWJ','LQD']
+BONDS  = ['IEF','LQD','SHY','BIL']
+
+# ———————— 2. Ahora sí puedes combinarlos ————————
 tickers = STOCKS + BONDS
+
+# ———————— 3. Fechas y descarga ————————
 last_month_end = datetime(2025, 4, 30)
 start = last_month_end.strftime("%Y-%m-%d")
 end   = (last_month_end + timedelta(days=1)).strftime("%Y-%m-%d")
 
-# Descarga diaria para ese día
 df = yf.download(
     tickers,
     start=start,
@@ -17,12 +22,9 @@ df = yf.download(
     auto_adjust=False
 )["Close"]
 
-# Debug: verifica el índice real
-print("Fechas descargadas:", df.index)
-
-# En lugar de .loc[start], toma directamente el primer registro:
-if not df.empty:
-    precios = df.iloc[0]   # aquí tienes un Series con el Close de cada ticker
-    print(precios)
+if df.empty:
+    st.error("No se descargaron datos para la fecha solicitada.")
 else:
-    print("No se descargó ningún dato para ese rango.")
+    # Toma el primer (y único) registro sin usar .loc
+    precios = df.iloc[0]
+    st.write("Precios al 2025-04-30:", precios.to_dict())
